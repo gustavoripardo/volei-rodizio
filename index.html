@@ -34,11 +34,15 @@
           <div class="panel-title"><span class="step-number">01</span><h3 id="form-title">Novo jogador</h3></div>
           <label for="player-name">Nome</label>
           <input id="player-name" name="name" type="text" maxlength="40" placeholder="Ex.: Ana Souza" required>
-          <label for="player-primary">Função principal</label>
-          <select id="player-primary" name="primary" required>
-            <option value="">Selecione uma função</option>
-            <option>Levantador(a)</option><option>Ponteiro(a)</option><option>Central</option><option>Oposto(a)</option><option>Líbero</option>
-          </select>
+          <fieldset class="primary-field"><legend>Função principal</legend>
+            <div class="primary-role-grid">
+              <label class="role-option"><input type="radio" name="primary" value="Levantador(a)" required><span>Levantador(a)</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Ponteiro(a)" required><span>Ponteiro(a)</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Central" required><span>Central</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Oposto(a)" required><span>Oposto(a)</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Líbero" required><span>Líbero</span></label>
+            </div>
+          </fieldset>
           <fieldset class="secondary-field"><legend>Funções secundárias <span>opcional</span></legend>
             <div class="check-grid">
               <label class="check-option"><input type="checkbox" name="secondary" value="Levantador(a)"><span>Levantador(a)</span></label>

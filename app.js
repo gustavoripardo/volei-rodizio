@@ -143,15 +143,20 @@
     const player = getPlayer(id); if (!player) return;
     editingId = id;
     $('#player-name').value = player.name;
-    $('#player-primary').value = player.primary;
+    $$('input[name="primary"]').forEach(input => input.checked = input.value === player.primary);
     $$('input[name="secondary"]').forEach(input => input.checked = (player.secondary || []).includes(input.value));
     $('#form-title').textContent = 'Editar jogador';
     $('#save-player').innerHTML = 'Salvar alterações <span>✓</span>';
     $('#cancel-edit').classList.remove('hidden');
     $('#player-name').focus();
   }
-  function resetForm() {
-    editingId = null; $('#player-form').reset(); $('#form-title').textContent = 'Novo jogador';
+  function resetForm({preserveRoles=false}={}) {
+    const primary = preserveRoles ? $('input[name="primary"]:checked')?.value : '';
+    const secondary = preserveRoles ? $$('input[name="secondary"]:checked').map(input => input.value) : [];
+    editingId = null; $('#player-form').reset();
+    if (preserveRoles && primary) $$('input[name="primary"]').forEach(input => input.checked = input.value === primary);
+    if (preserveRoles) $$('input[name="secondary"]').forEach(input => input.checked = secondary.includes(input.value));
+    $('#form-title').textContent = 'Novo jogador';
     $('#save-player').innerHTML = 'Adicionar jogador <span>＋</span>'; $('#cancel-edit').classList.add('hidden');
   }
   function deletePlayer(id) {
@@ -202,12 +207,13 @@
 
   $('#player-form').addEventListener('submit', event => {
     event.preventDefault();
-    const name = $('#player-name').value.trim(); const primary = $('#player-primary').value;
+    const name = $('#player-name').value.trim(); const primary = $('input[name="primary"]:checked')?.value || '';
     const secondary = $$('input[name="secondary"]:checked').map(input => input.value).filter(role => role !== primary);
     if (!name || !primary) return;
+    const wasEditing = Boolean(editingId);
     if (editingId) { const player = getPlayer(editingId); if (player) Object.assign(player,{name,primary,secondary}); }
     else state.players.push({id:globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,name,primary,secondary});
-    state.generated = false; persist(); resetForm(); renderPlayers(); hideResults();
+    state.generated = false; persist(); resetForm({preserveRoles:!wasEditing}); renderPlayers(); hideResults();
   });
   $('#cancel-edit').addEventListener('click', resetForm);
   $('#team-form').addEventListener('submit', event => {
