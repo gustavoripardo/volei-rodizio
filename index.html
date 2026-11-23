@@ -34,11 +34,15 @@
           <div class="panel-title"><span class="step-number">01</span><h3 id="form-title">Novo jogador</h3></div>
           <label for="player-name">Nome</label>
           <input id="player-name" name="name" type="text" maxlength="40" placeholder="Ex.: Ana Souza" required>
-          <label for="player-primary">Função principal</label>
-          <select id="player-primary" name="primary" required>
-            <option value="">Selecione uma função</option>
-            <option>Levantador(a)</option><option>Ponteiro(a)</option><option>Central</option><option>Oposto(a)</option><option>Líbero</option>
-          </select>
+          <fieldset class="primary-field"><legend>Função principal</legend>
+            <div class="primary-role-grid">
+              <label class="role-option"><input type="radio" name="primary" value="Levantador(a)" required><span>Levantador(a)</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Ponteiro(a)" required><span>Ponteiro(a)</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Central" required><span>Central</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Oposto(a)" required><span>Oposto(a)</span></label>
+              <label class="role-option"><input type="radio" name="primary" value="Líbero" required><span>Líbero</span></label>
+            </div>
+          </fieldset>
           <fieldset class="secondary-field"><legend>Funções secundárias <span>opcional</span></legend>
             <div class="check-grid">
               <label class="check-option"><input type="checkbox" name="secondary" value="Levantador(a)"><span>Levantador(a)</span></label>
@@ -54,13 +58,39 @@
       </div>
     </section>
 
+    <section class="section teams-section" id="times">
+      <div class="section-heading">
+        <div><span class="eyebrow">ORGANIZAÇÃO</span><h2>Times e escalações</h2><p>Monte um elenco e salve escalações para reutilizar a formação em poucos cliques.</p></div>
+        <span class="count-pill"><b id="team-count">0</b> times</span>
+      </div>
+      <div class="players-layout">
+        <form id="team-form" class="panel player-form">
+          <div class="panel-title"><span class="step-number">02</span><h3 id="team-form-title">Novo time</h3></div>
+          <label for="team-name">Nome do time</label>
+          <input id="team-name" type="text" maxlength="40" placeholder="Ex.: Vôlei de terça" required>
+          <fieldset class="team-members-field"><legend>Jogadores do elenco <span>selecione os disponíveis</span></legend><div id="team-player-list" class="team-player-list"></div><p id="no-players-hint" class="small-hint">Cadastre jogadores primeiro para adicioná-los ao time.</p></fieldset>
+          <div class="form-actions"><button class="button button-primary" type="submit" id="save-team">Criar time <span>＋</span></button><button class="button button-quiet hidden" id="cancel-team-edit" type="button">Cancelar</button></div>
+        </form>
+        <div class="roster panel"><div class="roster-head"><h3>Times cadastrados</h3><span id="team-total">0 times</span></div><div id="team-list" class="team-list"></div><div id="empty-teams" class="empty-state"><span class="empty-icon">＋</span><b>Organize seu elenco em times</b><span>Depois, salve escalações para reaproveitar.</span></div></div>
+      </div>
+    </section>
+
     <section class="section rotation-section" id="rodizio">
       <div class="section-heading">
         <div><span class="eyebrow">ESCALAÇÃO</span><h2>Montar rodízio</h2><p>Defina as seis posições de cada situação. A rotação segue o sentido oficial do vôlei.</p></div>
-        <span class="count-pill count-dark">02 <span>· QUADRA</span></span>
+        <span class="count-pill count-dark">03 <span>· QUADRA</span></span>
       </div>
       <div class="panel setup-panel">
-        <div class="system-head"><div class="panel-title"><span class="step-number">02</span><h3>Sistema de jogo</h3></div><span class="helper">Escolha como o time vai se organizar</span></div>
+        <div class="selection-panel">
+          <div class="system-head"><div class="panel-title"><span class="step-number">03</span><h3>Time e escalação</h3></div><span class="helper">Use uma escalação salva para preencher e filtrar as posições</span></div>
+          <div class="selection-controls">
+            <label for="active-team">Time<select id="active-team"><option value="">Todos os jogadores</option></select></label>
+            <label for="active-lineup">Escalação salva<select id="active-lineup"><option value="">Elenco completo do time</option></select></label>
+            <button id="delete-saved-lineup" class="button button-quiet" type="button" disabled>Excluir escalação</button>
+          </div>
+          <form id="save-lineup-form" class="save-lineup-form"><label for="saved-lineup-name">Salvar formação atual como</label><input id="saved-lineup-name" type="text" maxlength="40" placeholder="Ex.: Titulares · 5×1"><button class="button button-outline" type="submit">Salvar escalação <span>＋</span></button></form>
+        </div>
+        <div class="system-head"><div class="panel-title"><span class="step-number">04</span><h3>Sistema de jogo</h3></div><span class="helper">Escolha como o time vai se organizar</span></div>
         <div class="systems" role="radiogroup" aria-label="Sistema de jogo">
           <label class="system-card selected"><input type="radio" name="system" value="5x1" checked><span class="system-name">5×1</span><span class="system-desc">Um levantador<br>com infiltração</span><span class="system-check">✓</span></label>
           <label class="system-card"><input type="radio" name="system" value="4x2"><span class="system-name">4×2</span><span class="system-desc">Dois levantadores</span><span class="system-check">✓</span></label>
