@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102c27">
+  <title>Quadra — Rodízio de vôlei</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#inicio" aria-label="Quadra, início"><span class="brand-mark">Q</span><span>quadra<span class="brand-dot">.</span></span></a>
+    <div class="topbar-note"><span class="live-dot"></span> Seu time, organizado</div>
+  </header>
+
+  <main id="inicio">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">FERRAMENTA DO TIME</span>
+        <h1>Todo mundo no lugar.<br><em>O jogo flui.</em></h1>
+        <p>Cadastre os jogadores, escolha o sistema e visualize as seis rotações do seu time.</p>
+      </div>
+      <div class="hero-ball" aria-hidden="true"><span>Q</span></div>
+      <div class="hero-foot"><span>01 / PLANEJAMENTO</span><span>VÔLEI · RODÍZIO</span></div>
+    </section>
+
+    <section class="section players-section" id="jogadores">
+      <div class="section-heading">
+        <div><span class="eyebrow">ELENCO</span><h2>Jogadores</h2><p>Funções ajudam a montar o time. Cada jogador pode ter uma função principal e outras secundárias.</p></div>
+        <span class="count-pill"><b id="player-count">0</b> no elenco</span>
+      </div>
+      <div class="players-layout">
+        <form id="player-form" class="panel player-form">
+          <div class="panel-title"><span class="step-number">01</span><h3 id="form-title">Novo jogador</h3></div>
+          <label for="player-name">Nome</label>
+          <input id="player-name" name="name" type="text" maxlength="40" placeholder="Ex.: Ana Souza" required>
+          <label for="player-primary">Função principal</label>
+          <select id="player-primary" name="primary" required>
+            <option value="">Selecione uma função</option>
+            <option>Levantador(a)</option><option>Ponteiro(a)</option><option>Central</option><option>Oposto(a)</option><option>Líbero</option>
+          </select>
+          <fieldset class="secondary-field"><legend>Funções secundárias <span>opcional</span></legend>
+            <div class="check-grid">
+              <label class="check-option"><input type="checkbox" name="secondary" value="Levantador(a)"><span>Levantador(a)</span></label>
+              <label class="check-option"><input type="checkbox" name="secondary" value="Ponteiro(a)"><span>Ponteiro(a)</span></label>
+              <label class="check-option"><input type="checkbox" name="secondary" value="Central"><span>Central</span></label>
+              <label class="check-option"><input type="checkbox" name="secondary" value="Oposto(a)"><span>Oposto(a)</span></label>
+              <label class="check-option"><input type="checkbox" name="secondary" value="Líbero"><span>Líbero</span></label>
+            </div>
+          </fieldset>
+          <div class="form-actions"><button class="button button-primary" type="submit" id="save-player">Adicionar jogador <span>＋</span></button><button class="button button-quiet hidden" id="cancel-edit" type="button">Cancelar</button></div>
+        </form>
+        <div class="roster panel"><div class="roster-head"><h3>Elenco cadastrado</h3><span id="roster-total">0 jogadores</span></div><div id="player-list" class="player-list"></div><div id="empty-roster" class="empty-state"><span class="empty-icon">＋</span><b>Seu elenco começa aqui</b><span>Adicione os jogadores para montar a rotação.</span></div></div>
+      </div>
+    </section>
+
+    <section class="section rotation-section" id="rodizio">
+      <div class="section-heading">
+        <div><span class="eyebrow">ESCALAÇÃO</span><h2>Montar rodízio</h2><p>Defina as seis posições de cada situação. A rotação segue o sentido oficial do vôlei.</p></div>
+        <span class="count-pill count-dark">02 <span>· QUADRA</span></span>
+      </div>
+      <div class="panel setup-panel">
+        <div class="system-head"><div class="panel-title"><span class="step-number">02</span><h3>Sistema de jogo</h3></div><span class="helper">Escolha como o time vai se organizar</span></div>
+        <div class="systems" role="radiogroup" aria-label="Sistema de jogo">
+          <label class="system-card selected"><input type="radio" name="system" value="5x1" checked><span class="system-name">5×1</span><span class="system-desc">Um levantador<br>com infiltração</span><span class="system-check">✓</span></label>
+          <label class="system-card"><input type="radio" name="system" value="4x2"><span class="system-name">4×2</span><span class="system-desc">Dois levantadores</span><span class="system-check">✓</span></label>
+          <label class="system-card"><input type="radio" name="system" value="6x0"><span class="system-name">6×0</span><span class="system-desc">Sem posições<br>fixas por função</span><span class="system-check">✓</span></label>
+          <label class="system-card"><input type="radio" name="system" value="6x0 LF"><span class="system-name">6×0 LF</span><span class="system-desc">Levantador fixo<br>na posição 3</span><span class="system-check">✓</span></label>
+        </div>
+        <div class="system-hint" id="system-hint"></div>
+        <div class="lineup-grid">
+          <div class="lineup-block"><div class="lineup-heading"><span class="serve-icon own">↑</span><div><h4>Saque do time</h4><span>Formação quando seu time saca</span></div></div><div class="court" id="court-own" aria-label="Formação do saque do time"></div></div>
+          <div class="lineup-block"><div class="lineup-heading"><span class="serve-icon receive">↓</span><div><h4>Saque adversário</h4><span>Formação quando o adversário saca</span></div><button id="copy-lineup" class="copy-lineup" type="button" title="Copiar as posições do saque do time">Copiar escalação <span>←</span></button></div><div class="court" id="court-receive" aria-label="Formação do saque adversário"></div></div>
+        </div>
+        <div class="setup-footer"><div class="court-key"><span><i class="front-key"></i> Rede</span><span>Pos. 1 = saque</span></div><button id="generate" class="button button-primary button-generate">Gerar seis rodadas <span>→</span></button></div>
+        <p class="validation-message" id="validation-message" role="status"></p>
+      </div>
+    </section>
+
+    <section class="section results-section hidden" id="resultados">
+      <div class="section-heading result-heading"><div><span class="eyebrow">MAPA DE JOGO</span><h2>As seis rodadas</h2><p id="result-subtitle">Confira a posição de cada jogador em cada rodada.</p></div><button id="clear-results" class="button button-outline">Limpar escalação</button></div>
+      <div class="results-tabs" role="tablist"><button class="result-tab active" data-side="own" role="tab">Saque do time</button><button class="result-tab" data-side="receive" role="tab">Saque adversário</button></div>
+      <div class="rotation-cards" id="rotation-cards"></div>
+      <div class="rotation-note"><span>↻</span><p>Ao conquistar o saque, o time roda uma posição no sentido horário. A posição 1 fica no fundo à direita; a rede fica entre as posições 2, 3 e 4.</p></div>
+    </section>
+    <footer><span class="brand-small">quadra<span class="brand-dot">.</span></span><span>Feito para o próximo ponto.</span><span>SEU TIME · SEU JOGO</span></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
+
