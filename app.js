@@ -12,7 +12,7 @@
     '6x0': '6×0 · As funções não restringem a escalação. Os seis jogadores rodam juntos pelas posições.',
     '6x0 LF': '6×0 LF · Marque um levantador na posição 3. Ele fica fixo ali enquanto os outros cinco rodam pelas demais posições.'
   };
-  const defaults = {players:[], teams:[], savedLineups:[], activeTeamId:'', activeLineupId:'', system:'5x1', lineups:{own:Array(6).fill(''),receive:Array(6).fill('')}, activeSide:'own', generated:false};
+  const defaults = {players:[], teams:[], savedLineups:[], activeTeamId:'', activeLineupId:'', system:'5x1', lineups:{own:Array(6).fill(''),receive:Array(6).fill('')}, substitutions:{own:[],receive:[]}, activeSide:'own', generated:false};
   let state = readState();
   let editingId = null;
   let editingTeamId = null;
@@ -28,7 +28,7 @@
     try {
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
       if (!saved || !Array.isArray(saved.players)) return structuredClone(defaults);
-      return {...structuredClone(defaults), ...saved, teams:Array.isArray(saved.teams)?saved.teams:[], savedLineups:Array.isArray(saved.savedLineups)?saved.savedLineups:[], lineups:{own:Array(6).fill(''),receive:Array(6).fill(''),...(saved.lineups || {})}};
+      return {...structuredClone(defaults), ...saved, teams:Array.isArray(saved.teams)?saved.teams:[], savedLineups:Array.isArray(saved.savedLineups)?saved.savedLineups:[], lineups:{own:Array(6).fill(''),receive:Array(6).fill(''),...(saved.lineups || {})}, substitutions:{own:Array.isArray(saved.substitutions?.own)?saved.substitutions.own:[],receive:Array.isArray(saved.substitutions?.receive)?saved.substitutions.receive:[]}};
     } catch { return structuredClone(defaults); }
   }
   function persist() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
@@ -39,6 +39,10 @@
     const lineup = getSavedLineup(state.activeLineupId);
     const ids = lineup ? [...new Set([...(lineup.own||[]),...(lineup.receive||[])].filter(Boolean))] : team ? team.playerIds : null;
     return ids ? state.players.filter(player => ids.includes(player.id)) : state.players;
+  }
+  function teamRosterPlayers() {
+    const team = getTeam(state.activeTeamId);
+    return team ? state.players.filter(player => (team.playerIds || []).includes(player.id)) : state.players;
   }
 
   function renderPlayers() {
@@ -86,6 +90,7 @@
   function setActiveTeam(id) {
     state.activeTeamId = id || '';
     state.activeLineupId = '';
+    state.substitutions = {own:[],receive:[]};
     const allowed = new Set(eligiblePlayers().map(player => player.id));
     for (const side of ['own','receive']) state.lineups[side] = state.lineups[side].map(playerId => allowed.has(playerId) ? playerId : '');
     state.generated = false; persist(); renderTeams(); renderCourts(); hideResults();
@@ -106,7 +111,7 @@
     state.savedLineups = state.savedLineups.filter(lineup => lineup.teamId !== id);
     if (state.activeTeamId === id) { state.activeTeamId = ''; state.activeLineupId = ''; }
     if (editingTeamId === id) resetTeamForm();
-    state.generated = false; persist(); renderTeams(); renderCourts(); hideResults();
+    state.substitutions = {own:[],receive:[]}; state.generated = false; persist(); renderTeams(); renderCourts(); hideResults();
   }
 
   function renderCourts() {
@@ -120,9 +125,11 @@
       }).join('');
       $$('select', court).forEach(select => select.addEventListener('change', () => {
         state.lineups[side][Number(select.dataset.position) - 1] = select.value;
+        state.substitutions[side] = [];
         if (state.system === '6x0 LF' && Number(select.dataset.position) === 3) {
           const other = side === 'own' ? 'receive' : 'own';
           state.lineups[other][2] = select.value;
+          state.substitutions[other] = [];
         }
         state.generated = false;
         persist(); renderCourts(); hideResults();
@@ -164,6 +171,7 @@
     for (const side of ['own','receive']) state.lineups[side] = state.lineups[side].map(value => value === id ? '' : value);
     for (const team of state.teams) team.playerIds = (team.playerIds || []).filter(value => value !== id);
     state.savedLineups = state.savedLineups.filter(lineup => ![...(lineup.own || []), ...(lineup.receive || [])].includes(id));
+    for (const side of ['own','receive']) state.substitutions[side] = state.substitutions[side].filter(event => event.outId !== id && event.inId !== id);
     if (!getSavedLineup(state.activeLineupId)) state.activeLineupId = '';
     if (editingId === id) resetForm();
     state.generated = false; persist(); renderPlayers(); hideResults();
@@ -188,17 +196,125 @@
 
   function nextStandard(lineup) { return [lineup[1], lineup[2], lineup[3], lineup[4], lineup[5], lineup[0]]; }
   function nextFixedSetter(lineup) { return [lineup[1], lineup[3], lineup[2], lineup[4], lineup[5], lineup[0]]; }
+  function orderedSubstitutions(side, events=state.substitutions[side]) {
+    return events.map((event,index)=>({...event,_order:index})).sort((a,b)=>a.round-b.round || a._order-b._order);
+  }
+  function replaySubstitutions(side, events=state.substitutions[side]) {
+    const lineup = [...state.lineups[side]];
+    const starters = new Set(lineup);
+    const roster = new Set(teamRosterPlayers().map(player=>player.id));
+    const pairs = new Map();
+    const usedSubstitutes = new Set();
+    const rounds = [];
+    const ordered = orderedSubstitutions(side,events);
+    for (let round=1;round<=6;round++) {
+      if (round>1) {
+        const next = state.system === '6x0 LF' ? nextFixedSetter(lineup) : nextStandard(lineup);
+        lineup.splice(0,lineup.length,...next);
+      }
+      for (const event of ordered.filter(item=>item.round===round)) {
+        const outIndex=lineup.indexOf(event.outId);
+        if (outIndex<0) return {valid:false,error:`${getPlayer(event.outId)?.name || 'O jogador'} não está em quadra na R${round}.`,rounds};
+        const outgoing=getPlayer(event.outId), incoming=getPlayer(event.inId);
+        if (!incoming || !roster.has(event.inId)) return {valid:false,error:'O jogador que entra precisa fazer parte do time selecionado.',rounds};
+        if (event.outId===event.inId || lineup.includes(event.inId)) return {valid:false,error:'Escolha um reserva que esteja fora da quadra.',rounds};
+        if (outgoing?.primary==='Líbero' || incoming.primary==='Líbero') return {valid:false,error:'A troca regular não inclui o líbero; o planejamento da troca específica do líbero ainda não está disponível.',rounds};
+        const activePair=[...pairs.values()].find(pair=>pair.substituteId===event.outId && !pair.returned);
+        if (activePair) {
+          if (round<=activePair.entryRound) return {valid:false,error:'O titular só pode retornar depois de uma rodada completa.',rounds};
+          if (event.inId!==activePair.starterId) return {valid:false,error:`${outgoing.name} só pode sair para ${getPlayer(activePair.starterId)?.name || 'o titular original'}.`,rounds};
+          activePair.returned=true;
+          lineup[outIndex]=event.inId;
+          continue;
+        }
+        if (!starters.has(event.outId)) return {valid:false,error:'Somente um jogador da escalação inicial pode iniciar o par de substituição.',rounds};
+        if (pairs.has(event.outId)) return {valid:false,error:`${outgoing.name} já usou sua substituição e retorno neste set.`,rounds};
+        if (starters.has(event.inId)) return {valid:false,error:'O jogador que entra precisa ser um reserva da escalação inicial.',rounds};
+        if (usedSubstitutes.has(event.inId)) return {valid:false,error:`${incoming.name} já participou de uma substituição neste set.`,rounds};
+        pairs.set(event.outId,{starterId:event.outId,substituteId:event.inId,entryRound:round,returned:false});
+        usedSubstitutes.add(event.inId);
+        lineup[outIndex]=event.inId;
+      }
+      rounds.push([...lineup]);
+    }
+    return {valid:true,rounds};
+  }
   function buildRounds(side) {
-    const rounds = []; let lineup = [...state.lineups[side]];
-    for (let i=0;i<6;i++) { rounds.push([...lineup]); lineup = state.system === '6x0 LF' ? nextFixedSetter(lineup) : nextStandard(lineup); }
+    const result=replaySubstitutions(side);
+    if (result.valid) return result.rounds;
+    const rounds=[]; let lineup=[...state.lineups[side]];
+    for (let i=0;i<6;i++) { rounds.push([...lineup]); lineup=state.system==='6x0 LF'?nextFixedSetter(lineup):nextStandard(lineup); }
     return rounds;
+  }
+  function substitutionDisplayFor(side,round,playerId) {
+    const events=orderedSubstitutions(side);
+    for (const entry of events.filter(event=>event.kind==='entry')) {
+      const returned=events.find(event=>event.kind==='return' && event.pairId===entry.pairId);
+      if (round>=entry.round && (!returned || round<returned.round) && playerId===entry.inId) {
+        return {outId:entry.outId,inId:entry.inId,label:round===entry.round?`ENTROU · R${entry.round}`:`EM QUADRA · R${entry.round}`};
+      }
+      if (returned && round===returned.round && playerId===returned.inId) {
+        return {outId:returned.outId,inId:returned.inId,label:'RETORNO'};
+      }
+    }
+    return null;
+  }
+  function substitutionRosterOptions(side,round,outId) {
+    const current=buildRounds(side)[round-1] || [];
+    const roster=teamRosterPlayers().filter(player=>player.primary!=='Líbero' && !current.includes(player.id));
+    const entries=orderedSubstitutions(side).filter(event=>event.kind==='entry' && event.round<=round);
+    const returnFor=entries.find(event=>event.inId===outId);
+    if (returnFor) {
+      const returned=orderedSubstitutions(side).some(event=>event.kind==='return' && event.pairId===returnFor.pairId && event.round<=round);
+      if (returned || returnFor.round>=round) return [];
+      return roster.filter(player=>player.id===returnFor.outId);
+    }
+    if (entries.some(event=>event.outId===outId)) return [];
+    const used=new Set(entries.map(event=>event.inId));
+    const starters=new Set(state.lineups[side]);
+    return roster.filter(player=>!starters.has(player.id) && !used.has(player.id));
+  }
+  function renderSubstitutionChoices() {
+    const side=state.activeSide, round=Number($('#substitution-round').value||1);
+    const current=buildRounds(side)[round-1] || [];
+    const events=orderedSubstitutions(side).filter(event=>event.round<=round);
+    const selectedOut=$('#substitution-out').value;
+    const outOptions=current.filter(id=>{
+      const player=getPlayer(id); if (!player || player.primary==='Líbero') return false;
+      const entry=events.find(event=>event.kind==='entry' && event.outId===id);
+      if (entry) return false;
+      const pairEntry=events.find(event=>event.kind==='entry' && event.inId===id);
+      return !pairEntry || pairEntry.round<round;
+    });
+    $('#substitution-out').innerHTML=`<option value="">Escolha um jogador</option>${outOptions.map(id=>`<option value="${id}">${escapeHtml(getPlayer(id)?.name||'')}</option>`).join('')}`;
+    if (outOptions.includes(selectedOut)) $('#substitution-out').value=selectedOut;
+    renderSubstitutionInOptions();
+  }
+  function renderSubstitutionInOptions() {
+    const side=state.activeSide, round=Number($('#substitution-round').value||1), outId=$('#substitution-out').value;
+    const oldIn=$('#substitution-in').value;
+    const options=outId?substitutionRosterOptions(side,round,outId):[];
+    $('#substitution-in').innerHTML=`<option value="">${options.length?'Escolha um reserva':'Sem reserva elegível'}</option>${options.map(player=>`<option value="${player.id}">${escapeHtml(player.name)} · ${escapeHtml(player.primary)}</option>`).join('')}`;
+    if (options.some(player=>player.id===oldIn)) $('#substitution-in').value=oldIn;
+  }
+  function renderSubstitutionPanel(side,rounds) {
+    const events=orderedSubstitutions(side);
+    $('#substitution-count').textContent=events.length;
+    $('#substitution-form button[type="submit"]').disabled=events.length>=8;
+    $('#substitution-list').innerHTML=events.length?events.map(event=>`<span class="substitution-item"><b>R${event.round}</b>${escapeHtml(getPlayer(event.outId)?.name||'Jogador')} → ${escapeHtml(getPlayer(event.inId)?.name||'Jogador')}<button type="button" data-remove-substitution="${event.pairId}" aria-label="Remover par de substituição" title="Remover par">×</button></span>`).join(''):'<span class="small-hint">Nenhuma substituição planejada nesta formação.</span>';
+    $$('[data-remove-substitution]').forEach(button=>button.addEventListener('click',()=>{
+      state.substitutions[side]=state.substitutions[side].filter(event=>event.pairId!==button.dataset.removeSubstitution);
+      state.generated=false;persist();$('#substitution-message').textContent='Par removido.';renderResults();
+    }));
+    renderSubstitutionChoices();
   }
   function renderResults() {
     const side = state.activeSide;
     const rounds = buildRounds(side);
     $('#rotation-cards').innerHTML = rounds.map((lineup, index) => `
       <article class="rotation-card ${index === 0 ? 'current' : ''}"><div class="rotation-card-head"><h3>Rodada ${index + 1}</h3><span class="rotation-badge">R${index + 1}${index === 0 ? ' · INÍCIO' : ''}</span></div>
-      <div class="mini-court">${courtLayout.map(position => { const player = getPlayer(lineup[position - 1]); const fixed = state.system === '6x0 LF' && position === 3; return `<div class="mini-slot ${fixed ? 'fixed' : ''}"><b>${position}</b><span>${player ? escapeHtml(player.name) : '—'}</span><small>${player ? escapeHtml(player.primary) : ''}${fixed ? ' · FIXO' : ''}</small></div>`; }).join('')}</div></article>`).join('');
+      <div class="mini-court">${courtLayout.map(position => { const playerId=lineup[position-1]; const player=getPlayer(playerId); const fixed=state.system==='6x0 LF'&&position===3; const sub=substitutionDisplayFor(side,index+1,playerId); const slotContent=sub?`<div class="mini-swap"><span class="player-out" title="Saiu da quadra">${escapeHtml(getPlayer(sub.outId)?.name||'—')}</span><span class="swap-arrow" aria-hidden="true">${sub.label==='RETORNO'?'↩':'↓'}</span><strong class="player-in" title="Está nesta posição">${escapeHtml(getPlayer(sub.inId)?.name||'—')}</strong></div><small class="substitution-label">${escapeHtml(sub.label)}${fixed?' · FIXO':''}</small>`:`<span>${player?escapeHtml(player.name):'—'}</span><small>${player?escapeHtml(player.primary):''}${fixed?' · FIXO':''}</small>`; return `<div class="mini-slot ${fixed?'fixed':''} ${sub?'has-substitution':''}" aria-label="Posição ${position}${sub?`, saiu ${getPlayer(sub.outId)?.name}, entrou ${getPlayer(sub.inId)?.name}`:player?`, ${player.name}`:''}"><b>${position}</b>${slotContent}</div>`; }).join('')}</div></article>`).join('');
+    renderSubstitutionPanel(side,rounds);
     $$('.result-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.side === side));
     $('#result-subtitle').textContent = `${state.system} · ${side === 'own' ? 'Saque do time' : 'Saque adversário'} · Posição 1 = saque`;
   }
@@ -213,6 +329,7 @@
     const wasEditing = Boolean(editingId);
     if (editingId) { const player = getPlayer(editingId); if (player) Object.assign(player,{name,primary,secondary}); }
     else state.players.push({id:globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,name,primary,secondary});
+    if (wasEditing) state.substitutions = {own:[],receive:[]};
     state.generated = false; persist(); resetForm({preserveRoles:!wasEditing}); renderPlayers(); hideResults();
   });
   $('#cancel-edit').addEventListener('click', resetForm);
@@ -228,6 +345,7 @@
       const allowed = new Set(playerIds);
       state.activeLineupId = '';
       for (const side of ['own','receive']) state.lineups[side] = state.lineups[side].map(id => allowed.has(id) ? id : '');
+      state.substitutions = {own:[],receive:[]};
     }
     state.generated = false; persist(); resetTeamForm(); renderCourts(); hideResults();
   });
@@ -239,6 +357,7 @@
     if (lineup) {
       state.system = lineup.system || state.system;
       state.lineups = {own:[...lineup.own],receive:[...lineup.receive]};
+      state.substitutions = {own:[],receive:[]};
       if (state.system === '6x0 LF') { const fixed = state.lineups.own[2] || state.lineups.receive[2] || ''; state.lineups.own[2] = fixed; state.lineups.receive[2] = fixed; }
     }
     state.generated = false; persist(); renderTeams(); renderSystem(); hideResults();
@@ -267,8 +386,28 @@
     state.savedLineups = state.savedLineups.filter(lineup => lineup.id !== id);
     state.activeLineupId = ''; state.generated = false; persist(); renderTeams(); renderCourts(); hideResults();
   });
+  $('#substitution-round').addEventListener('change', renderSubstitutionChoices);
+  $('#substitution-out').addEventListener('change', renderSubstitutionInOptions);
+  $('#substitution-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const side=state.activeSide, round=Number($('#substitution-round').value);
+    const outId=$('#substitution-out').value, inId=$('#substitution-in').value;
+    if (!outId || !inId) { $('#substitution-message').textContent='Escolha quem sai e quem entra.'; return; }
+    if (state.substitutions[side].length>=8) { $('#substitution-message').textContent='O limite de oito substituições neste set foi atingido.'; return; }
+    const priorEntry=orderedSubstitutions(side).find(item=>item.kind==='entry' && item.inId===outId);
+    const isReturn=Boolean(priorEntry);
+    const pairId=isReturn?priorEntry.pairId:(globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const substitution={id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`,pairId,round,outId,inId,kind:isReturn?'return':'entry'};
+    const proposed=[...state.substitutions[side],substitution];
+    const result=replaySubstitutions(side,proposed);
+    if (!result.valid) { $('#substitution-message').textContent=result.error; return; }
+    state.substitutions[side]=orderedSubstitutions(side,proposed).map(({_order,...item})=>item);
+    persist(); $('#substitution-message').textContent=`Troca registrada na R${round}.`;
+    renderResults();
+  });
   $('#copy-lineup').addEventListener('click', () => {
     state.lineups.receive = [...state.lineups.own];
+    state.substitutions.receive = [];
     state.generated = false;
     persist(); renderCourts(); hideResults();
     $('#validation-message').textContent = '';
@@ -277,6 +416,7 @@
   });
   $$('input[name="system"]').forEach(input => input.addEventListener('change', () => {
     state.system = input.value;
+    state.substitutions = {own:[],receive:[]};
     if (state.system === '6x0 LF') { const fixed = state.lineups.own[2] || state.lineups.receive[2] || ''; state.lineups.own[2] = fixed; state.lineups.receive[2] = fixed; }
     state.generated = false; persist(); renderSystem(); hideResults();
   }));

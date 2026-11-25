@@ -110,6 +110,17 @@
     <section class="section results-section hidden" id="resultados">
       <div class="section-heading result-heading"><div><span class="eyebrow">MAPA DE JOGO</span><h2>As seis rodadas</h2><p id="result-subtitle">Confira a posição de cada jogador em cada rodada.</p></div><button id="clear-results" class="button button-outline">Limpar escalação</button></div>
       <div class="results-tabs" role="tablist"><button class="result-tab active" data-side="own" role="tab">Saque do time</button><button class="result-tab" data-side="receive" role="tab">Saque adversário</button></div>
+      <div class="substitution-panel">
+        <div class="substitution-heading"><div><h3>Planejar substituições</h3><p>O titular e seu reserva formam um par. O titular pode voltar uma vez, somente no lugar do mesmo reserva.</p></div><span class="substitution-count"><b id="substitution-count">0</b> / 8 trocas</span></div>
+        <form id="substitution-form" class="substitution-form">
+          <label for="substitution-round">Rodada<select id="substitution-round"><option value="1">R1</option><option value="2">R2</option><option value="3">R3</option><option value="4">R4</option><option value="5">R5</option><option value="6">R6</option></select></label>
+          <label for="substitution-out">Quem sai<select id="substitution-out"><option value="">Escolha um jogador</option></select></label>
+          <label for="substitution-in">Quem entra<select id="substitution-in"><option value="">Escolha um reserva</option></select></label>
+          <button class="button button-primary" type="submit">Registrar troca <span>＋</span></button>
+        </form>
+        <p id="substitution-message" class="substitution-message" role="status"></p>
+        <div id="substitution-list" class="substitution-list"></div>
+      </div>
       <div class="rotation-cards" id="rotation-cards"></div>
       <div class="rotation-note"><span>↻</span><p>Ao conquistar o saque, o time roda uma posição no sentido horário. A posição 1 fica no fundo à direita; a rede fica entre as posições 2, 3 e 4.</p></div>
     </section>
