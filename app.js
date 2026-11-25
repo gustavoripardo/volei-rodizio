@@ -246,6 +246,19 @@
     for (let i=0;i<6;i++) { rounds.push([...lineup]); lineup=state.system==='6x0 LF'?nextFixedSetter(lineup):nextStandard(lineup); }
     return rounds;
   }
+  function substitutionDisplayFor(side,round,playerId) {
+    const events=orderedSubstitutions(side);
+    for (const entry of events.filter(event=>event.kind==='entry')) {
+      const returned=events.find(event=>event.kind==='return' && event.pairId===entry.pairId);
+      if (round>=entry.round && (!returned || round<returned.round) && playerId===entry.inId) {
+        return {outId:entry.outId,inId:entry.inId,label:round===entry.round?`ENTROU · R${entry.round}`:`EM QUADRA · R${entry.round}`};
+      }
+      if (returned && round===returned.round && playerId===returned.inId) {
+        return {outId:returned.outId,inId:returned.inId,label:'RETORNO'};
+      }
+    }
+    return null;
+  }
   function substitutionRosterOptions(side,round,outId) {
     const current=buildRounds(side)[round-1] || [];
     const roster=teamRosterPlayers().filter(player=>player.primary!=='Líbero' && !current.includes(player.id));
@@ -300,7 +313,7 @@
     const rounds = buildRounds(side);
     $('#rotation-cards').innerHTML = rounds.map((lineup, index) => `
       <article class="rotation-card ${index === 0 ? 'current' : ''}"><div class="rotation-card-head"><h3>Rodada ${index + 1}</h3><span class="rotation-badge">R${index + 1}${index === 0 ? ' · INÍCIO' : ''}</span></div>
-      <div class="mini-court">${courtLayout.map(position => { const player = getPlayer(lineup[position - 1]); const fixed = state.system === '6x0 LF' && position === 3; return `<div class="mini-slot ${fixed ? 'fixed' : ''}"><b>${position}</b><span>${player ? escapeHtml(player.name) : '—'}</span><small>${player ? escapeHtml(player.primary) : ''}${fixed ? ' · FIXO' : ''}</small></div>`; }).join('')}</div></article>`).join('');
+      <div class="mini-court">${courtLayout.map(position => { const playerId=lineup[position-1]; const player=getPlayer(playerId); const fixed=state.system==='6x0 LF'&&position===3; const sub=substitutionDisplayFor(side,index+1,playerId); const slotContent=sub?`<div class="mini-swap"><span class="player-out" title="Saiu da quadra">${escapeHtml(getPlayer(sub.outId)?.name||'—')}</span><span class="swap-arrow" aria-hidden="true">${sub.label==='RETORNO'?'↩':'↓'}</span><strong class="player-in" title="Está nesta posição">${escapeHtml(getPlayer(sub.inId)?.name||'—')}</strong></div><small class="substitution-label">${escapeHtml(sub.label)}${fixed?' · FIXO':''}</small>`:`<span>${player?escapeHtml(player.name):'—'}</span><small>${player?escapeHtml(player.primary):''}${fixed?' · FIXO':''}</small>`; return `<div class="mini-slot ${fixed?'fixed':''} ${sub?'has-substitution':''}" aria-label="Posição ${position}${sub?`, saiu ${getPlayer(sub.outId)?.name}, entrou ${getPlayer(sub.inId)?.name}`:player?`, ${player.name}`:''}"><b>${position}</b>${slotContent}</div>`; }).join('')}</div></article>`).join('');
     renderSubstitutionPanel(side,rounds);
     $$('.result-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.side === side));
     $('#result-subtitle').textContent = `${state.system} · ${side === 'own' ? 'Saque do time' : 'Saque adversário'} · Posição 1 = saque`;
