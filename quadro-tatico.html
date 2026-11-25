@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102c27">
+  <title>Quadro tático · Quadra</title>
+  <link rel="stylesheet" href="quadro-tatico.css">
+</head>
+<body>
+  <header class="tactical-header">
+    <a class="brand" href="index.html"><span class="brand-mark">Q</span><span>quadra<span class="brand-dot">.</span></span></a>
+    <div class="tactical-controls">
+      <label for="tactical-side">Formação<select id="tactical-side"><option value="own">Saque do time</option><option value="receive">Saque adversário</option></select></label>
+      <label for="tactical-round">Rodada<select id="tactical-round"><option value="1">R1</option><option value="2">R2</option><option value="3">R3</option><option value="4">R4</option><option value="5">R5</option><option value="6">R6</option></select></label>
+      <button id="reset-layout" class="reset-layout" type="button">Restaurar posições</button>
+    </div>
+  </header>
+  <main class="tactical-main">
+    <section class="board-heading">
+      <div><span class="eyebrow">PLANO DE JOGO</span><h1 id="board-title">Quadro tático · R1</h1><p id="board-subtitle">Arraste os jogadores para organizar o time.</p></div>
+      <span class="system-pill" id="system-pill">—</span>
+    </section>
+    <div class="board-layout">
+      <section class="court-panel" aria-label="Quadra tática">
+        <div class="net"><span>REDE</span><i aria-hidden="true"></i></div>
+        <div class="half-court" id="half-court">
+          <div class="three-meter-area"><span>ÁREA DOS TRÊS METROS</span></div>
+          <div class="defense-area"><span>ÁREA DE DEFESA</span></div>
+          <div class="three-meter-line"><span>3 m</span></div>
+          <div class="court-players" id="court-players" aria-label="Jogadores em quadra"></div>
+        </div>
+        <div class="court-footer"><span>LINHA DE FUNDO</span><span>Arraste cada círculo para posicionar</span></div>
+      </section>
+      <aside class="bench-panel" id="bench-panel" aria-label="Banco de reservas">
+        <div class="bench-heading"><div><span class="eyebrow">ELENCO DISPONÍVEL</span><h2>Banco de reservas</h2></div><span class="bench-count" id="bench-count">0</span></div>
+        <p class="bench-help">Mova os reservas para a quadra e organize sua estratégia.</p>
+        <div class="bench-list" id="bench-list"></div>
+        <div id="empty-bench" class="bench-empty hidden">Todos os jogadores do time estão em quadra.</div>
+      </aside>
+    </div>
+    <div class="board-legend"><span><i class="legend-dot role-setter"></i> Levantador(a)</span><span><i class="legend-dot role-outside"></i> Ponteiro(a)</span><span><i class="legend-dot role-middle"></i> Central</span><span><i class="legend-dot role-opposite"></i> Oposto(a)</span><span><i class="legend-dot role-libero"></i> Líbero</span></div>
+    <p id="board-status" class="board-status" role="status"></p>
+  </main>
+  <script src="quadro-tatico.js"></script>
+</body>
+</html>
+

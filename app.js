@@ -312,7 +312,7 @@
     const side = state.activeSide;
     const rounds = buildRounds(side);
     $('#rotation-cards').innerHTML = rounds.map((lineup, index) => `
-      <article class="rotation-card ${index === 0 ? 'current' : ''}"><div class="rotation-card-head"><h3>Rodada ${index + 1}</h3><span class="rotation-badge">R${index + 1}${index === 0 ? ' · INÍCIO' : ''}</span></div>
+      <article class="rotation-card ${index === 0 ? 'current' : ''}"><div class="rotation-card-head"><div class="rotation-title"><h3>Rodada ${index + 1}</h3><span class="rotation-badge">R${index + 1}${index === 0 ? ' · INÍCIO' : ''}</span></div><a class="tactical-open" href="quadro-tatico.html?side=${side}&amp;round=${index+1}" target="_blank" rel="opener" aria-label="Abrir quadro tático da rodada ${index+1} em nova aba">Quadro tático <span>↗</span></a></div>
       <div class="mini-court">${courtLayout.map(position => { const playerId=lineup[position-1]; const player=getPlayer(playerId); const fixed=state.system==='6x0 LF'&&position===3; const sub=substitutionDisplayFor(side,index+1,playerId); const slotContent=sub?`<div class="mini-swap"><span class="player-out" title="Saiu da quadra">${escapeHtml(getPlayer(sub.outId)?.name||'—')}</span><span class="swap-arrow" aria-hidden="true">${sub.label==='RETORNO'?'↩':'↓'}</span><strong class="player-in" title="Está nesta posição">${escapeHtml(getPlayer(sub.inId)?.name||'—')}</strong></div><small class="substitution-label">${escapeHtml(sub.label)}${fixed?' · FIXO':''}</small>`:`<span>${player?escapeHtml(player.name):'—'}</span><small>${player?escapeHtml(player.primary):''}${fixed?' · FIXO':''}</small>`; return `<div class="mini-slot ${fixed?'fixed':''} ${sub?'has-substitution':''}" aria-label="Posição ${position}${sub?`, saiu ${getPlayer(sub.outId)?.name}, entrou ${getPlayer(sub.inId)?.name}`:player?`, ${player.name}`:''}"><b>${position}</b>${slotContent}</div>`; }).join('')}</div></article>`).join('');
     renderSubstitutionPanel(side,rounds);
     $$('.result-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.side === side));
@@ -428,6 +428,22 @@
   });
   $$('.result-tab').forEach(tab => tab.addEventListener('click', () => { state.activeSide = tab.dataset.side; persist(); renderResults(); }));
   $('#clear-results').addEventListener('click', () => { state.generated = false; hideResults(); document.querySelector('#rodizio').scrollIntoView({behavior:'smooth',block:'start'}); });
+
+  const tacticalTabs=new Set();
+  window.addEventListener('message',event=>{
+    if(event.data?.type!=='quadra:tactical-ready') return;
+    const tab=[...tacticalTabs].find(candidate=>candidate===event.source);
+    if(!tab) return;
+    tab.postMessage({type:'quadra:tactical-state',state},'*');
+  });
+  document.addEventListener('click',event=>{
+    const link=event.target.closest('a.tactical-open');
+    if(!link) return;
+    event.preventDefault();
+    const tab=window.open(link.href,'_blank');
+    if(tab) tacticalTabs.add(tab);
+    else $('#validation-message').textContent='O navegador bloqueou a nova aba do quadro tático.';
+  });
 
   renderPlayers(); renderSystem();
   if (state.generated && !validate('own') && !validate('receive')) { $('#resultados').classList.remove('hidden'); renderResults(); }
